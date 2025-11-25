@@ -1,0 +1,15 @@
+# Core dependencies for Whisper Large V3 with CUDA 12.4 support
+torch>=2.1.0
+torchaudio>=2.1.0
+transformers>=4.36.0
+accelerate>=0.25.0
+
+# Audio processing
+yt-dlp>=2023.12.30
+ffmpeg-python>=0.2.0
+
+# UI
+gradio>=4.0.0
+
+# Optional: Intel NPU support (uncomment if using Intel NPU)
+# intel-extension-for-pytorch>=2.0.0
