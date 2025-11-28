@@ -13,10 +13,12 @@ import sys
 
 from src.utils.config import Config
 from src.utils.cuda_and_gpu_check import CudaAndGPUCheck
+from src.run_server import RunServer
 
 cuda_and_gpu_check = CudaAndGPUCheck()
 pipe = cuda_and_gpu_check.asr_pipeline()
 device_config = cuda_and_gpu_check.get_device()
+run_server = RunServer()
 
 MODEL_NAME = Config.MODEL_NAME
 BATCH_SIZE = Config.BATCH_SIZE
@@ -208,56 +210,52 @@ def yt_transcribe(yt_url, task, max_filesize=75.0):
     html_embed_str = _return_yt_html_embed(yt_url)
 
     with tempfile.TemporaryDirectory() as tmpdirname:
-        filepath = os.path.join(tmpdirname, "video.mp4")
-        filepath = download_yt_audio(yt_url, filepath)
-        
-        with open(filepath, "rb") as f:
-            inputs = f.read()
+        try:
+            filepath = os.path.join(tmpdirname, "audio")
+            filepath = download_yt_audio(yt_url, filepath)
+            
+            inputs = filepath
 
-    inputs = ffmpeg_read(inputs, pipe.feature_extractor.sampling_rate)
-    inputs = {"array": inputs, "sampling_rate": pipe.feature_extractor.sampling_rate}
-
-    # Clear GPU cache before processing
-    if device_config["device_type"] == "CUDA GPU":
-        torch.cuda.empty_cache()
-    
-    try:
-        # Improved generation parameters for better accuracy
-        generate_kwargs = {
-            "task": task,
-            "language": None,  # Auto-detect language
-            "num_beams": 5,  # Beam search for better accuracy
-            "temperature": 0.0,  # Deterministic output
-            "compression_ratio_threshold": 2.4,  # Filter out repetitive text
-            "logprob_threshold": -1.0,  # Filter low-confidence predictions
-            "no_speech_threshold": 0.6,  # Better silence detection
-            "condition_on_prev_tokens": True,  # Use context for better accuracy
-        }
+            # Clear GPU cache before processing
+            if device_config["device_type"] == "CUDA GPU":
+                torch.cuda.empty_cache()
         
-        # Get word-level timestamps for better precision
-        result = pipe(
-            inputs,
-            batch_size=BATCH_SIZE,
-            generate_kwargs=generate_kwargs,
-            return_timestamps="sentence",  # Sentence-level timestamps
-        )
-        
-        # Format the output with timestamps
-        formatted_text = format_transcription_with_timestamps(result, word_level=False)
-        
-    except RuntimeError as e:
-        error_str = str(e)
-        if "CUDA" in error_str or "cuda" in error_str.lower() or "kernel" in error_str.lower():
-            raise gr.Error(
-                f"❌ GPU ERROR: {error_str[:300]}\n\n"
-                f"This app requires GPU/NPU and does not support CPU fallback.\n"
-                f"Your GPU ({device_config.get('device_name', 'Unknown')}) may not be compatible with current PyTorch.\n\n"
-                f"🔧 SOLUTION: Install PyTorch Nightly:\n"
-                f"   pip uninstall torch torchvision torchaudio\n"
-                f"   pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu124"
+            # Improved generation parameters for better accuracy
+            generate_kwargs = {
+                "task": task,
+                "language": None,  # Auto-detect language
+                "num_beams": 5,  # Beam search for better accuracy
+                "temperature": 0.0,  # Deterministic output
+                "compression_ratio_threshold": 2.4,  # Filter out repetitive text
+                "logprob_threshold": -1.0,  # Filter low-confidence predictions
+                "no_speech_threshold": 0.6,  # Better silence detection
+                "condition_on_prev_tokens": True,  # Use context for better accuracy
+            }
+            
+            # Get word-level timestamps for better precision
+            result = pipe(
+                inputs,
+                batch_size=BATCH_SIZE,
+                generate_kwargs=generate_kwargs,
+                return_timestamps="sentence",  # Sentence-level timestamps
             )
-        else:
-            raise gr.Error(f"Transcription error: {error_str[:200]}")
+            
+            # Format the output with timestamps
+            formatted_text = format_transcription_with_timestamps(result, word_level=False)
+        
+        except RuntimeError as e:
+            error_str = str(e)
+            if "CUDA" in error_str or "cuda" in error_str.lower() or "kernel" in error_str.lower():
+                raise gr.Error(
+                    f"❌ GPU ERROR: {error_str[:300]}\n\n"
+                    f"This app requires GPU/NPU and does not support CPU fallback.\n"
+                    f"Your GPU ({device_config.get('device_name', 'Unknown')}) may not be compatible with current PyTorch.\n\n"
+                    f"🔧 SOLUTION: Install PyTorch Nightly:\n"
+                    f"   pip uninstall torch torchvision torchaudio\n"
+                    f"   pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu124"
+                )
+            else:
+                raise gr.Error(f"Transcription error: {error_str[:200]}")
 
     return html_embed_str, formatted_text
 
@@ -364,67 +362,5 @@ with gr.Blocks(title="Whisper Large V3 - YouTube Transcriber") as demo:
             outputs=output_text
         )
 
-def signal_handler(sig, frame):
-    """Handle Ctrl+C gracefully"""
-    print("\n\n" + "="*50)
-    print("Shutting down gracefully...")
-    print("="*50)
-    
-    # Clear GPU cache if using GPU
-    if device_config["device_type"] == "CUDA GPU":
-        torch.cuda.empty_cache()
-        print("✓ GPU cache cleared")
-    
-    print("✓ Server stopped")
-    sys.exit(0)
-
 if __name__ == "__main__":
-    # Register signal handler for graceful shutdown
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
-    
-    print("\n" + "="*50)
-    print("Starting Whisper Transcription Server...")
-    print("="*50)
-    print("Press Ctrl+C to stop the server")
-    print("="*50 + "\n")
-    
-    try:
-        # Get local IP address for network access
-        import socket
-        def get_local_ip():
-            """Get the local IP address"""
-            try:
-                # Connect to a remote address to determine local IP
-                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                s.connect(("8.8.8.8", 80))
-                ip = s.getsockname()[0]
-                s.close()
-                return ip
-            except Exception:
-                return "127.0.0.1"
-        
-        local_ip = get_local_ip()
-        
-        print(f"\n" + "="*70)
-        print("🌐 Server Access Information")
-        print("="*70)
-        print(f"Local access:    http://127.0.0.1:7860")
-        print(f"Network access:  http://{local_ip}:7860")
-        print(f"\nOthers on your network can access the app at:")
-        print(f"  → http://{local_ip}:7860")
-        print(f"\n⚠ Make sure Windows Firewall allows connections on port 7860")
-        print("="*70 + "\n")
-        
-        demo.launch(
-            server_name="0.0.0.0",  # Allow connections from any network interface
-            server_port=7860,
-            share=False,  # Set to True for public Gradio link (requires internet)
-            show_error=True,
-            quiet=False,
-        )
-    except KeyboardInterrupt:
-        signal_handler(None, None)
-    except Exception as e:
-        print(f"\n❌ Error starting server: {e}")
-        sys.exit(1)
+    run_server.run_server(demo)
