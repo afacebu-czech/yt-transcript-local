@@ -72,14 +72,14 @@ with gr.Blocks(title="Whisper Large V3 - YouTube Transcriber") as demo:
         yt_submit_btn = gr.Button("🚀 Transcribe YouTube Video", variant="primary")
         yt_html_output = gr.HTML(label="Video Preview")
         
-        with gr.Row():
+        with gr.Column():
             yt_text_output = gr.Textbox(
                 label="📝 Transcription with Timestamps",
                 lines=20,
                 placeholder="Transcription with timestamps will appear here...",
                 elem_classes=["transcription-output"]
             )
-        with gr.Row():
+        with gr.Column():
             yt_copy_btn = gr.Button("📋 Copy to Clipboard", variant="secondary")
             yt_copy_status = gr.Textbox(label="Status", visible=False)
             yt_copy_btn.click(
@@ -124,7 +124,7 @@ with gr.Blocks(title="Whisper Large V3 - YouTube Transcriber") as demo:
             )
         
         submit_btn.click(
-            fn=transcribe,
+            # fn=transcribe,
             inputs=[audio_input, task_input],
             outputs=output_text
         )

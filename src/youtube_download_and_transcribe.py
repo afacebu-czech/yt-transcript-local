@@ -45,20 +45,50 @@ class YoutubeDownloadAndTranscribe:
         except Exception as e:
             print(f"Transcription error: {e}")
             return []
-            
-    def download_and_transcribe(self, url: str):
-        audio_file = self._download_youtube_video(url)
-        transcriptions = self._transcribe_audio(audio_file)
         
-        trans_text = ""
-        for text, start, end in transcriptions:
-            trans_text += (f"{text}")
-        return trans_text
-        
-def main():
-    yt = YoutubeDownloadAndTranscribe()
-    transcript = yt.download_and_transcribe("https://www.youtube.com/watch?v=lv0LlujoNVQ")
-    print(transcript)
+    def _convert_float_to_seconds(self, float_var: float):
+        # Less than 60 → treat as seconds
+        if float_var < 60:
+            sec = format(float_var, ".2f")
+            return sec.replace(".", ":")
+
+        # 60 or more → convert to minutes:seconds
+        minutes = int(float_var // 60)
+        seconds = float_var % 60  # remainder in seconds
+        return f"{minutes}:{seconds:05.2f}".replace(".", ":")
     
-if __name__=="__main__":
-    main()
+    def _return_yt_html_embed(self, yt_url: str):
+        video_id = yt_url
+        if "?v=" in yt_url:
+            video_id = yt_url.split("?v=")[-1].split("&")[0]
+        elif "youtu.be/" in yt_url:
+            video_id = yt_url.split("youtu.be/")[-1].split("?")[0]
+        elif "/watch/" in yt_url:
+            video_id = yt_url.split("/watch/")[-1].split("?")[0]
+        
+        HTML_str = (
+            f'<center> <iframe width="500" height="320" src="https://www.youtube.com/embed/{video_id}"> </iframe>'
+            " </center>"
+        )
+        return HTML_str
+            
+    def download_and_transcribe(self, url: str, task: str):
+        if task == "transcribe":
+            audio_file = self._download_youtube_video(url)
+            transcriptions = self._transcribe_audio(audio_file)
+            
+            html_embed_str = self._return_yt_html_embed(url)
+            
+            trans_text = ""
+            for text, start, end in transcriptions:
+                trans_text += (f"{self._convert_float_to_seconds(start)} - {self._convert_float_to_seconds(end)}: {text}\n")
+            
+            return html_embed_str, trans_text
+                
+# def main():
+#     yt = YoutubeDownloadAndTranscribe()
+#     transcript = yt.download_and_transcribe("https://www.youtube.com/watch?v=lv0LlujoNVQ")
+#     print(transcript)
+    
+# if __name__=="__main__":
+#     main()
