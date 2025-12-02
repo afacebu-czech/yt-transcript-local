@@ -153,10 +153,10 @@ class TranscribeAndTranslate:
             
         return transcript
         
-def main():
-    yt = TranscribeAndTranslate()
-#    yt.test("https://www.youtube.com/watch?v=lv0LlujoNVQ")
-    yt.test(r"C:\Users\PM SHIFT\Documents\czech-codes\yt-transcript-local\audios\audio_Why Some Projects Use Multiple Programming Languages.m4a")
+# def main():
+#     yt = TranscribeAndTranslate()
+# #    yt.test("https://www.youtube.com/watch?v=lv0LlujoNVQ")
+#     yt.test(r"C:\Users\PM SHIFT\Documents\czech-codes\yt-transcript-local\audios\audio_Why Some Projects Use Multiple Programming Languages.m4a")
     
-if __name__=="__main__":
-    main()
+# if __name__=="__main__":
+#     main()
