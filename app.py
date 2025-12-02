@@ -140,5 +140,5 @@ with gr.Blocks(title="Whisper Large V3 - YouTube Transcriber") as demo:
         )
 
 if __name__ == "__main__":
-    # run_server.run_server(demo)
-    demo.launch()
+    run_server.run_server(demo)
+    # demo.launch()
