@@ -1,0 +1,12 @@
+Collecting ctranslate2
+  Downloading ctranslate2-4.6.1-cp313-cp313-win_amd64.whl.metadata (10 kB)
+Requirement already satisfied: setuptools in c:\users\pm shift\documents\czech-codes\yt-transcript-local\.ytc\lib\site-packages (from ctranslate2) (70.2.0)
+Requirement already satisfied: numpy in c:\users\pm shift\documents\czech-codes\yt-transcript-local\.ytc\lib\site-packages (from ctranslate2) (2.3.3)
+Collecting pyyaml<7,>=5.3 (from ctranslate2)
+  Downloading pyyaml-6.0.3-cp313-cp313-win_amd64.whl.metadata (2.4 kB)
+Downloading ctranslate2-4.6.1-cp313-cp313-win_amd64.whl (18.6 MB)
+   ---------------------------------------- 18.6/18.6 MB 9.4 MB/s  0:00:02
+Downloading pyyaml-6.0.3-cp313-cp313-win_amd64.whl (154 kB)
+Installing collected packages: pyyaml, ctranslate2
+
+Successfully installed ctranslate2-4.6.1 pyyaml-6.0.3

@@ -1,6 +1,6 @@
 import torch
 import gradio as gr
-import yt_dlp as youtube_dl
+# import yt_dlp as youtube_dl
 from transformers import pipeline
 from transformers.pipelines.audio_utils import ffmpeg_read
 import numpy as np
@@ -13,14 +13,14 @@ import sys
 
 from src.utils.config import Config
 from src.utils.cuda_and_gpu_check import CudaAndGPUCheck
-from src.run_server import RunServer
-from src.youtube_download_and_transcribe import YoutubeDownloadAndTranscribe
+from src.run_server import RunServer, NgrokServer
+from src.youtube_download_and_transcribe import TranscribeAndTranslate
 
 cuda_and_gpu_check = CudaAndGPUCheck()
 pipe = cuda_and_gpu_check.asr_pipeline()
 device_config = cuda_and_gpu_check.get_device()
-run_server = RunServer()
-yt_dl_and_trans = YoutubeDownloadAndTranscribe()
+run_server = NgrokServer()
+yt_dl_and_trans = TranscribeAndTranslate()
 
 MODEL_NAME = Config.MODEL_NAME
 BATCH_SIZE = Config.BATCH_SIZE
@@ -69,6 +69,15 @@ with gr.Blocks(title="Whisper Large V3 - YouTube Transcriber") as demo:
                 value="transcribe",
                 info="Transcribe: same language | Translate: to English"
             )
+            with gr.Column():
+                language = gr.Dropdown(
+                    ["None", "Spanish", "French", "German", "Chinese", "Portuguese", "Russian"],
+                    value="None",
+                    label="Select Destination Language for Translation",
+                    info="Only appears when 'translate' is selected.",
+                    interactive=True
+                )
+            
         yt_submit_btn = gr.Button("🚀 Transcribe YouTube Video", variant="primary")
         yt_html_output = gr.HTML(label="Video Preview")
         
@@ -90,8 +99,9 @@ with gr.Blocks(title="Whisper Large V3 - YouTube Transcriber") as demo:
             )
         
         yt_submit_btn.click(
-            fn=yt_dl_and_trans.download_and_transcribe,
-            inputs=[yt_url_input, yt_task_input],
+            fn=yt_dl_and_trans.from_youtube,
+            show_progress='full',
+            inputs=[yt_task_input, yt_url_input, language],
             outputs=[yt_html_output, yt_text_output]
         )
     
@@ -124,10 +134,11 @@ with gr.Blocks(title="Whisper Large V3 - YouTube Transcriber") as demo:
             )
         
         submit_btn.click(
-            # fn=transcribe,
-            inputs=[audio_input, task_input],
+            fn=yt_dl_and_trans.from_audio_file,
+            inputs=[task_input, audio_input, language],
             outputs=output_text
         )
 
 if __name__ == "__main__":
-    run_server.run_server(demo)
+    # run_server.run_server(demo)
+    demo.launch()
