@@ -14,13 +14,13 @@ import sys
 from src.utils.config import Config
 from src.utils.cuda_and_gpu_check import CudaAndGPUCheck
 from src.run_server import RunServer, NgrokServer
-from src.youtube_download_and_transcribe import YoutubeDownloadAndTranscribe
+from src.youtube_download_and_transcribe import TranscribeAndTranslate
 
 cuda_and_gpu_check = CudaAndGPUCheck()
 pipe = cuda_and_gpu_check.asr_pipeline()
 device_config = cuda_and_gpu_check.get_device()
 run_server = NgrokServer()
-yt_dl_and_trans = YoutubeDownloadAndTranscribe()
+yt_dl_and_trans = TranscribeAndTranslate()
 
 MODEL_NAME = Config.MODEL_NAME
 BATCH_SIZE = Config.BATCH_SIZE
@@ -57,27 +57,26 @@ with gr.Blocks(title="Whisper Large V3 - YouTube Transcriber") as demo:
     gr.Markdown(device_status)
     
     with gr.Tab("📺 YouTube Transcription"):
-        with gr.Column():
+        with gr.Row():
             yt_url_input = gr.Textbox(
                 label="YouTube URL",
                 placeholder="Paste YouTube video URL here (e.g., https://www.youtube.com/watch?v=...)",
                 lines=1
             )
-        with gr.Column():
             yt_task_input = gr.Radio(
                 ["transcribe", "translate"],
                 label="Task",
                 value="transcribe",
                 info="Transcribe: same language | Translate: to English"
             )
-        with gr.Column():
-            language = gr.Dropdown(
-                ["None", "Spanish", "French", "German", "Chinese", "Portuguese", "Russian"],
-                value="None",
-                label="Select Destination Language for Translation",
-                info="Only appears when 'translate' is selected.",
-                interactive=True
-            )
+            with gr.Column():
+                language = gr.Dropdown(
+                    ["None", "Spanish", "French", "German", "Chinese", "Portuguese", "Russian"],
+                    value="None",
+                    label="Select Destination Language for Translation",
+                    info="Only appears when 'translate' is selected.",
+                    interactive=True
+                )
             
         yt_submit_btn = gr.Button("🚀 Transcribe YouTube Video", variant="primary")
         yt_html_output = gr.HTML(label="Video Preview")
@@ -100,9 +99,9 @@ with gr.Blocks(title="Whisper Large V3 - YouTube Transcriber") as demo:
             )
         
         yt_submit_btn.click(
-            fn=yt_dl_and_trans.transcribe_or_translate,
+            fn=yt_dl_and_trans.from_youtube,
             show_progress='full',
-            inputs=[yt_task_input, yt_url_input, language, ],
+            inputs=[yt_task_input, yt_url_input, language],
             outputs=[yt_html_output, yt_text_output]
         )
     
@@ -135,8 +134,8 @@ with gr.Blocks(title="Whisper Large V3 - YouTube Transcriber") as demo:
             )
         
         submit_btn.click(
-            fn=yt_dl_and_trans.transcribe_or_translate,
-            inputs=[audio_input, task_input],
+            fn=yt_dl_and_trans.from_audio_file,
+            inputs=[task_input, audio_input, language],
             outputs=output_text
         )
 

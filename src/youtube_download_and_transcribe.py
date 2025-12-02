@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-class YoutubeDownloadAndTranscribe:
+class TranscribeAndTranslate:
     def __init__(self):
         self.youtube = YouTube
         self.gtranslate = GoogleTranslateV2()
@@ -41,11 +41,13 @@ class YoutubeDownloadAndTranscribe:
     #     result = pipe(audio_path, return_timestamps=True)
     #     print(result["text"])
     def _translate(self, text: str, translation_lang: str=None):
-        try:
-            translated_text = str(self.gtranslate.translate(text, destination_language=translation_lang))
-        except:
-            translated_text = ""
-        return translated_text
+        if translation_lang:
+            try:
+                translated_text = str(self.gtranslate.translate(text, destination_language=translation_lang))
+            except:
+                translated_text = text
+            return translated_text
+        return text
         
     def _download_youtube_video(self, url: str):
         try:
@@ -107,47 +109,52 @@ class YoutubeDownloadAndTranscribe:
             " </center>"
         )
         return HTML_str
-            
-    def _download_and_transcribe(self, url: str, language: str=None):
-        audio_file = self._download_youtube_video(url)
-        transcriptions = self._transcribe_audio(audio_file)
-        
-        html_embed_str = self._return_yt_html_embed(url)
-        
-        trans_text = ""
-        for text, start, end in transcriptions:
-            trans_text += (f"{self._convert_float_to_seconds(start)} - {self._convert_float_to_seconds(end)}: {text}\n")
-        
-        return html_embed_str, trans_text
         
     def _transcribe_only(self, audio_path: str):
         transcriptions = self._transcribe_audio(audio_path)
         
-        trans_text = ""
-        for text, start, end in  transcriptions:
-            trans_text += (f"{self._convert_float_to_seconds(start)} - {self._convert_float_to_seconds(end)}: {text}\n")
+        transcribed_text = ""
+        for text, start, end in transcriptions:
+            transcribed_text += (f"{self._convert_float_to_seconds(start)} - {self._convert_float_to_seconds(end)}: {text}\n")
             
-        return trans_text
+        return transcribed_text
     
-    def _is_url(path: str) -> bool:
-        try:
-            result = urlparse(path)
-            return all([result.scheme, result.netloc])
-        except:
-            return False
+    def _transcribe_and_translate(self, audio_path: str, language: str=None):
+        transcriptions = self._transcribe_audio(audio_path)
         
-    def _is_file_path(path: str) -> bool:
-        return os.path.exists(path)
-    
-    def transcribe_or_translate(self, task: str, path: str=None, language: str=None):
-        if self._is_url:
-            result_html, result_str = self._download_and_transcribe(task=="translate", path, language)
-            return result_html, result_str
-        if self._is_file_path:
-            self._transcribe_only(task=="translate", path, language)
+        transcribed_and_translated_text = ""
+        for text, start, end in transcriptions:
+            transcribed_and_translated_text += (f"{self._convert_float_to_seconds(start)} - {self._convert_float_to_seconds(end)}: {self._translate(text, language)}\n")
             
+        return transcribed_and_translated_text
+    
+    def from_youtube(self, task: str, path: str, language:str=None):
+        if language == "None":
+            language = None
+        
+        html_embed_url = self._return_yt_html_embed(path)
+        audio_file_path = self._download_youtube_video(path)
+        
+        if task=="translate" and language:
+            transcript = self._transcribe_and_translate(audio_file_path, language)
+        else:
+            transcript = self._transcribe_only(audio_file_path)
+        
+        return html_embed_url, transcript
+        
+    def from_audio_file(self, task: str, path: str, language: str=None):
+        if language == "None":
+            language = None
+        
+        if task=="translate" and language:
+            transcript = self._transcribe_and_translate(path, language)
+        else:
+            transcript = self._transcribe_only(path)
+            
+        return transcript
+        
 def main():
-    yt = YoutubeDownloadAndTranscribe()
+    yt = TranscribeAndTranslate()
 #    yt.test("https://www.youtube.com/watch?v=lv0LlujoNVQ")
     yt.test(r"C:\Users\PM SHIFT\Documents\czech-codes\yt-transcript-local\audios\audio_Why Some Projects Use Multiple Programming Languages.m4a")
     
